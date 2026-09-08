@@ -1,4 +1,35 @@
 import { test, expect } from '@playwright/test';
+test('侧栏导航冒烟：每个入口的 h1 都会真正切换（捕捉"点击不换内容"的 bug 类）', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  const response = await page.request.post('/api/v1/projects', {
+    data: { title: '导航冒烟', premise: '检查每个入口都换内容' },
+  });
+  const project = await response.json();
+  await page.goto('/');
+  await page.evaluate((id) => localStorage.setItem('novel-project', id), project.id);
+  await page.reload();
+  const cases = [
+    '作品概览',
+    '正文写作',
+    '故事蓝图',
+    '人物与关系',
+    '世界观设定',
+    '关系图谱',
+    '故事时间线',
+    '伏笔与回收',
+    '故事记忆',
+    '创作记录',
+  ];
+  for (const label of cases) {
+    await page.locator('nav').getByRole('button', { name: label }).click();
+    // 每点一个，侧栏高亮和主区域 h1 都必须真正落到对应标签，
+    // 否则就是用户报的"只换标题不换内容"那一类 bug。
+    await expect(page.locator('nav').getByRole('button', { name: label })).toHaveClass(/active/);
+    await expect(page.getByRole('heading', { name: label, level: 1 })).toBeVisible();
+  }
+  expect(errors).toEqual([]);
+});
 test('网页建书、人物卡、自定义字段、正文保存、历史恢复与导出', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));

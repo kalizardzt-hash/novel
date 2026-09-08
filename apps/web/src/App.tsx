@@ -110,6 +110,14 @@ export function App() {
   useEffect(() => {
     if (!projectId && projects.data?.length) choose(projects.data[0]!.id);
   }, [projects.data]);
+  // 工作区加载失败时通常是 localStorage 里残留了已删除作品的 id；
+  // 清掉它，避免侧栏点了任何视图都只换标题、不换内容。
+  useEffect(() => {
+    if (projectId && workspace.isError) {
+      localStorage.removeItem('novel-project');
+      setProjectId('');
+    }
+  }, [projectId, workspace.isError]);
   const choose = (id: string) => {
     setProjectId(id);
     localStorage.setItem('novel-project', id);
@@ -163,6 +171,11 @@ export function App() {
   const active = w?.runs.find((r) => ['running', 'queued', 'awaiting_approval'].includes(r.status));
   const connected = Boolean(models.data?.selected.id);
   const workerAlive = health.data?.worker && Date.now() - Date.parse(health.data.worker.heartbeat) < 45000;
+  // 没有作品时只允许停在概览与设置；点别的侧栏入口会被回弹到概览，
+  // 由 Welcome 引导新建作品，而不是看起来像"页面不跳转"。
+  useEffect(() => {
+    if (!w && view !== 'overview' && view !== 'settings') setView('overview');
+  }, [w, view]);
   const navigate = (target: View) => {
     setView(target);
     setMobileNav(false);
