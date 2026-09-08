@@ -1,0 +1,5 @@
+{
+  "name": "@novel/domain",
+  "private": true,
+  "type": "module"
+}

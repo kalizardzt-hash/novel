@@ -1,0 +1,5 @@
+{
+  "name": "@novel/application",
+  "private": true,
+  "type": "module"
+}

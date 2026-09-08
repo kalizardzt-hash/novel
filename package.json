@@ -1,0 +1,55 @@
+{
+  "name": "novel-studio",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.9.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "tsx scripts/start.ts --dev",
+    "start": "tsx scripts/start.ts",
+    "server": "tsx apps/server/src/main.ts",
+    "worker": "tsx apps/worker/src/main.ts",
+    "build": "vite build --config apps/web/vite.config.ts",
+    "check": "tsc --noEmit && tsx scripts/check-boundaries.ts",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "test:scale": "tsx packages/evaluation/src/scale.ts",
+    "eval:model": "tsx packages/evaluation/src/model.ts",
+    "eval:longform": "tsx packages/evaluation/src/longform.ts",
+    "eval:continuity": "tsx packages/evaluation/src/continuity.ts",
+    "doctor": "tsx scripts/doctor.ts",
+    "restore": "tsx scripts/restore.ts",
+    "format:check": "prettier --check .",
+    "format": "prettier --write ."
+  },
+  "dependencies": {
+    "@fastify/multipart": "^9.0.3",
+    "@fastify/static": "^8.3.0",
+    "@tanstack/react-query": "^5.90.0",
+    "@tiptap/react": "^3.0.0",
+    "@tiptap/starter-kit": "^3.0.0",
+    "@xyflow/react": "^12.9.0",
+    "better-sqlite3": "13.0.3",
+    "drizzle-orm": "^0.45.0",
+    "fastify": "5.12.3",
+    "lucide-react": "^0.577.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.0",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^5.1.0",
+    "prettier": "^3.9.6",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.0",
+    "vite": "^7.3.0",
+    "vitest": "^4.0.0"
+  }
+}

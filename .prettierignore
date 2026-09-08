@@ -1,0 +1,6 @@
+.novel
+node_modules
+apps/web/dist
+pnpm-lock.yaml
+test-results
+playwright-report
