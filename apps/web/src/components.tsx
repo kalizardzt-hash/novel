@@ -16,6 +16,7 @@ import {
   RefreshCw,
   Sparkles,
   Settings2,
+  Radar,
 } from 'lucide-react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -1170,6 +1171,8 @@ export function RunsPanel({ workspace: w, action }: { workspace: Workspace; acti
     </>
   );
 }
+type ProviderPreset = { name: string; baseUrl: string; website?: string; note?: string };
+
 export function SettingsPanel({ action }: { action: Action }) {
   const config = useQuery({ queryKey: ['config'], queryFn: () => api<AppConfig>('/config') });
   const models = useQuery({
@@ -1178,11 +1181,39 @@ export function SettingsPanel({ action }: { action: Action }) {
     retry: false,
     refetchInterval: 30000,
   });
+  const providers = useQuery({
+    queryKey: ['providers'],
+    queryFn: () =>
+      api<{
+        local: (ProviderPreset & { reachable: boolean; models: string[]; detail?: string })[];
+        external: ProviderPreset[];
+      }>('/providers'),
+    retry: false,
+    staleTime: 30000,
+  });
   const [form, set] = useState<AppConfig>();
   useEffect(() => {
     if (config.data) set(config.data);
   }, [config.data]);
   if (!form) return <p>正在读取配置…</p>;
+  const applyService = (baseUrl: string, identifier?: string) =>
+    set({
+      ...form,
+      model: { ...form.model, baseUrl, ...(identifier === undefined ? {} : { identifier }) },
+    });
+  // 严格 JSON Schema 并非所有外部服务都支持；切换预设时保守降级为 JSON 模式。
+  const applyExternal = (baseUrl: string) =>
+    set({
+      ...form,
+      model: {
+        ...form.model,
+        baseUrl,
+        ...(form.model.responseFormat === 'json_schema'
+          ? { responseFormat: 'json_object' as const }
+          : {}),
+      },
+    });
+  const found = providers.data?.local.filter((s) => s.reachable) ?? [];
   return (
     <form
       className="settings-form"
@@ -1196,6 +1227,77 @@ export function SettingsPanel({ action }: { action: Action }) {
         <div>
           <h3>模型服务</h3>
           <p>OpenAI 兼容 API：LM Studio、Ollama、vLLM、DeepSeek、OpenAI 等均可接入。</p>
+        </div>
+      </div>
+      <div className="provider-block">
+        <div className="provider-toolbar">
+          <button
+            type="button"
+            className="provider-probe"
+            onClick={() => void providers.refetch()}
+            disabled={providers.isFetching}
+          >
+            <Radar size={14} />
+            {providers.isFetching ? '探测中…' : '探测本机服务'}
+          </button>
+          <span className="provider-hint">自动发现本机已启动的模型服务</span>
+        </div>
+        {providers.isError && (
+          <div className="notice small">探测失败：{providers.error.message}。可在下方手动填写 API 地址。</div>
+        )}
+        {providers.isSuccess && found.length === 0 && (
+          <div className="notice small">
+            没有发现本机模型服务。启动 LM Studio（lms server start）、Ollama 等后重试，或在下方手动填写地址。
+          </div>
+        )}
+        {found.map((service) => (
+          <div key={service.baseUrl} className="provider-item">
+            <div className="provider-head">
+              <button type="button" className="provider-name" onClick={() => applyService(service.baseUrl)}>
+                {service.name}
+              </button>
+              <span className="provider-url">{service.baseUrl}</span>
+              <span className="provider-count">
+                {service.models.length ? `${service.models.length} 个模型` : '未返回模型'}
+              </span>
+            </div>
+            {service.models.length > 0 && (
+              <div className="provider-models">
+                {service.models.slice(0, 8).map((id) => (
+                  <button
+                    key={id}
+                    type="button"
+                    className="provider-model"
+                    title={`使用 ${service.name} 的 ${id}`}
+                    onClick={() => applyService(service.baseUrl, id)}
+                  >
+                    {id}
+                  </button>
+                ))}
+                {service.models.length > 8 && <span className="provider-more">等 {service.models.length} 个</span>}
+              </div>
+            )}
+          </div>
+        ))}
+        <div className="provider-external">
+          <span className="provider-label">外部 API：</span>
+          <div className="provider-models">
+            {(providers.data?.external ?? []).map((preset) => (
+              <button
+                key={preset.baseUrl}
+                type="button"
+                className="provider-model"
+                title={preset.note ? `${preset.note}｜获取 Key：${preset.website ?? ''}` : `获取 Key：${preset.website ?? ''}`}
+                onClick={() => applyExternal(preset.baseUrl)}
+              >
+                {preset.name}
+              </button>
+            ))}
+          </div>
+          <span className="provider-hint">
+            点击填入地址后，请在下方粘贴该服务的 API Key
+            {providers.data?.external.some((p) => p.website) ? '（悬停查看获取入口）' : ''}。
+          </span>
         </div>
       </div>
       <Field label="API 地址（含 /v1）" hint="例如 http://127.0.0.1:1234/v1 或 https://api.deepseek.com/v1">

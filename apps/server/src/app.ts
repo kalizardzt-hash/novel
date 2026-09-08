@@ -18,6 +18,7 @@ import { cardTemplates } from '../../../packages/domain/src/templates.ts';
 import type { StoryStore } from '../../../packages/application/src/ports.ts';
 import { dataDirectory, readConfig, writeConfig } from '../../../packages/infrastructure/src/config.ts';
 import { OpenAICompatibleModel } from '../../../packages/infrastructure/src/openai.ts';
+import { EXTERNAL_PROVIDERS, LOCAL_SERVICES, probeServices } from '../../../packages/infrastructure/src/providers.ts';
 const idOf = (value: unknown) => z.object({ id: z.string().min(1) }).parse(value).id;
 const revision = (value: unknown) =>
   z.object({ revision: z.number().int().positive() }).passthrough().parse(value).revision;
@@ -72,6 +73,20 @@ export async function buildApp(store: StoryStore, options: { logger?: boolean; w
       models: await adapter.listModels().catch(() => []),
       selected: await adapter.info().catch((e) => ({ error: e.message })),
     };
+  });
+  // 探测本机 OpenAI 兼容服务（无 Key、只访问回环地址），外部提供商返回静态预设。
+  app.get('/api/v1/providers', async () => {
+    const configured = readConfig().model.baseUrl;
+    let host = '';
+    try {
+      host = new URL(configured).hostname;
+    } catch {}
+    const loopback = ['127.0.0.1', 'localhost', '[::1]', '::1'];
+    const extra =
+      loopback.includes(host) && !LOCAL_SERVICES.some((s) => s.baseUrl === configured)
+        ? [{ name: '当前配置地址', baseUrl: configured }]
+        : [];
+    return { local: await probeServices([...LOCAL_SERVICES, ...extra]), external: EXTERNAL_PROVIDERS };
   });
   app.get('/api/v1/projects', () => store.listProjects());
   app.post('/api/v1/projects', (request, reply) =>
